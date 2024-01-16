@@ -37,6 +37,7 @@
 import sys
 
 import geometry_msgs.msg
+from std_msgs.msg import String 
 import rclpy
 
 if sys.platform == 'win32':
@@ -83,7 +84,7 @@ def main():
     rclpy.init()
 
     node = rclpy.create_node('keyboard_publisher')
-    pub = node.create_publisher(geometry_msgs.msg.Twist, 'wheel_instructions_topic', 10)
+    pub = node.create_publisher(String, 'servo_keyboard_input', 10)
 
     x = 0.0
     y = 0.0
@@ -94,39 +95,27 @@ def main():
         while True:
             key = getKey(settings)
             if key in moveBindings.keys():
-                x = float(moveBindings[key][0])
-                y = float(moveBindings[key][1])
-                z = float(moveBindings[key][2])
-                th = float(moveBindings[key][3])
+                key_pressed = key;
             else:
-                x = 0.0
-                y = 0.0
-                z = 0.0
-                th = 0.0
                 if (key == '\x03'):
                     break
 
-            twist = geometry_msgs.msg.Twist()
-            twist.linear.x = x
-            twist.linear.y = y 
-            twist.linear.z = z 
-            twist.angular.x = 0.0
-            twist.angular.y = 0.0
-            twist.angular.z = th
-            pub.publish(twist)
+            msg = String()
+            msg.data = key_pressed
+            pub.publish(msg)
 
     except Exception as e:
         print(e)
 
     finally:
-        twist = geometry_msgs.msg.Twist()
-        twist.linear.x = 0.0
-        twist.linear.y = 0.0
-        twist.linear.z = 0.0
-        twist.angular.x = 0.0
-        twist.angular.y = 0.0
-        twist.angular.z = 0.0
-        pub.publish(twist)
+        # twist = geometry_msgs.msg.Twist()
+        # twist.linear.x = 0.0
+        # twist.linear.y = 0.0
+        # twist.linear.z = 0.0
+        # twist.angular.x = 0.0
+        # twist.angular.y = 0.0
+        # twist.angular.z = 0.0
+        # pub.publish(twist)
 
         restoreTerminalSettings(settings)
 

@@ -5,6 +5,8 @@ import serial
 
 # Handle Twist messages, linear and angular velocity
 from geometry_msgs.msg import Twist
+from std_msgs.msg import String
+
 class SerialServer(Node):
 	def __init__(self):
 		super().__init__('serial_server')
@@ -12,36 +14,24 @@ class SerialServer(Node):
 		self.declare_parameters(
 		namespace='',
 		parameters=[
-			('device', '/dev/ttyACM0'), #device we are trasmitting to & recieving messages from
-		    ('wheel_instructions_topic', 'wheel_instructions_topic'),
-		    ('move_forward_lin_vel', 1.0),
-		    ('move_backward_lin_vel', -1.0),
-		    ('turn_left_ang_vel', 1.0),
-		    ('turn_right_ang_vel', -1.0),
-		    ('move_forward_cmd', 'w'),
-		    ('move_backward_cmd', 's'),
+			('device', '/dev/ttyACM0'), #device we are transmitting to & receiving messages from
+		    ('servo_keyboard_input', 'servo_keyboard_input'),
+		    ('move_straight_cmd', 'w'),
 		    ('turn_right_cmd', 'd'),
-		    ('turn_left_cmd', 'a'),
-		    ('stop_cmd', 'x'),
-		]
+		    ('turn_left_cmd', 'a')		
+			]
 		)
-		self.wheel_topic_name = self.get_param_str('wheel_instructions_topic')
+		self.servo_topic_name = self.get_param_str('servo_keyboard_input')
 		self.device_name = self.get_param_str('device')
-		self.forward_vel = self.get_param_float('move_forward_lin_vel')
-		self.backward_vel = self.get_param_float('move_backward_lin_vel')
-		self.turn_left_vel = self.get_param_float('turn_left_ang_vel')
-		self.turn_right_vel = self.get_param_float('turn_right_ang_vel')
-		self.move_forward_cmd = self.get_param_str('move_forward_cmd')
-		self.move_backward_cmd = self.get_param_str('move_backward_cmd')
-		self.turn_left_cmd = self.get_param_str('turn_left_cmd')
+		self.move_straight_cmd = self.get_param_str('move_straight_cmd')
 		self.turn_right_cmd = self.get_param_str('turn_right_cmd')
-		self.stop_cmd = self.get_param_str('stop_cmd')
+		self.turn_left_cmd = self.get_param_str('turn_left_cmd')
 		self.ser = serial.Serial(self.device_name,
-                           9600, #Note: Baud Rate must be the same in the arduino program, otherwise signal is not recieved!
+                           9600, #Note: Baud Rate must be the same in the arduino program, otherwise signal is not received!
                            timeout=.1)
 		
-		self.subscriber = self.create_subscription(Twist, 
-                                              self.wheel_topic_name, 
+		self.subscriber = self.create_subscription(String, 
+                                              self.servo_topic_name, 
                                               self.serial_listener_callback, 
                                               10)
 		self.subscriber # prevent unused variable warning
@@ -59,15 +49,15 @@ class SerialServer(Node):
 	def send_cmd(self, cmd):
 		print("Sending: " + cmd)
 		self.ser.write(bytes(cmd,'utf-8'))
-	def recieve_cmd(self):
+	def receive_cmd(self):
 		try:
-			#try normal way of recieving data
-			#sleep(.01) #sleep to allow time for serial_data to arrive. Otherwise this might return nothing
 			line = self.ser.readline().decode('utf-8').rstrip()
-		except:
-			#if normal way doesn't work, try getting binary representation to see what went wrong
-			line = str(self.ser.readline())
-		print("Recieved: " + line)
+			print("Received: " + line)
+			return line
+		except Exception as e:
+			print(f"Error receiving command: {e}")
+			return None
+		
 	def serial_listener_callback(self, msg):
 		#NOTE: 
 		# For some reason, arduino sends back null byte (0b'' or Oxff) back after the first call to ser.write
@@ -76,26 +66,17 @@ class SerialServer(Node):
 		# To prevent this, I added the try-except blocks to prevent the program from crashing
 		# If a null byte is sent, "except" is called which prevents the program from crashing
 		"""Move Forward"""
-		if msg.linear.x == self.forward_vel:
-			self.send_cmd(self.move_forward_cmd)
-			self.recieve_cmd()
-		"""Move Backward"""
-		if msg.linear.x == self.backward_vel:
-			self.send_cmd(self.move_backward_cmd)
-			self.recieve_cmd()
+		if msg.data == self.move_straight_cmd:
+			self.send_cmd(self.move_straight_cmd)
+			self.receive_cmd()
 		"""Turn Left"""
-		if msg.angular.z == self.turn_left_vel:
+		if msg.data == self.turn_left_cmd:
 			self.send_cmd(self.turn_left_cmd)
-			self.recieve_cmd()
+			self.receive_cmd()
 		"""Turn Right"""
-		if msg.angular.z == self.turn_right_vel:
+		if msg.data == self.turn_right_cmd:
 			self.send_cmd(self.turn_right_cmd)
-			self.recieve_cmd()	
-		"""Stop"""
-		if msg == Twist():
-			self.send_cmd(self.stop_cmd)
-			self.recieve_cmd()
-			
+			self.receive_cmd()	
 
 def main(args=None):
 	rclpy.init(args=args)

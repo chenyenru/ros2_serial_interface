@@ -2,6 +2,7 @@
 import rclpy
 from rclpy.node import Node
 from geometry_msgs.msg import Twist
+from std_msgs.msg import String
 import time
 def run_publisher(node):
     msg = Twist()
@@ -19,14 +20,14 @@ def run_publisher(node):
     node.publisher_.publish(msg)
     time.sleep(0.25)
 
-    msg = Twist()
-    msg.angular.z = -1.0
+    msg = String()
+    msg.data = "5"
     node.publisher_.publish(msg)
     time.sleep(0.25)
 class Publisher(Node):
     def __init__(self):
         super().__init__('publisher')
-        self.publisher_ = self.create_publisher(Twist, 'wheel_instructions_topic', 10)
+        self.publisher_ = self.create_publisher(String, 'wheel_instructions_topic', 10)
         self.isFinished = False
 
 def main(args=None):
